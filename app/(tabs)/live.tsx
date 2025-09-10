@@ -2,9 +2,11 @@ import * as Location from "expo-location";
 import { GoogleMaps } from "expo-maps";
 import * as TaskManager from "expo-task-manager";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { DeviceEventEmitter, StyleSheet, View } from "react-native";
+import CustomGeofenceAlert from "../../components/CustomGeofenceAlert";
 
 const GEOFENCING_TASK_NAME = "GEOFENCING";
+const GEOFENCE_ENTER_EVENT = "GEOFENCE_ENTER";
 
 // Define the task that will handle geofencing events
 TaskManager.defineTask(
@@ -21,9 +23,11 @@ TaskManager.defineTask(
       return;
     }
     if (data.eventType === Location.GeofencingEventType.Enter) {
-      Alert.alert("Welcome!", "You've entered the geofenced area!");
+      console.log("Geofence Enter Event Triggered");
+      DeviceEventEmitter.emit(GEOFENCE_ENTER_EVENT, { entered: true });
     } else if (data.eventType === Location.GeofencingEventType.Exit) {
-      Alert.alert("Goodbye!", "You've left the geofenced area!");
+      console.log("Geofence Exit Event Triggered");
+      DeviceEventEmitter.emit(GEOFENCE_ENTER_EVENT, { entered: false });
     }
   }
 );
@@ -33,6 +37,8 @@ export default function Live() {
     null
   );
   const [isGeofencing, setIsGeofencing] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [isInsideGeofence, setIsInsideGeofence] = useState(false);
 
   // Start geofencing when location is available
   useEffect(() => {
@@ -47,43 +53,84 @@ export default function Live() {
       const { status: foregroundStatus } =
         await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== "granted") {
-        Alert.alert("Permission denied", "Please enable location permissions");
+        console.error("Permission denied: Please enable location permissions");
         return;
       }
 
       const { status: backgroundStatus } =
         await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== "granted") {
-        Alert.alert(
-          "Permission denied",
-          "Background location access is required for geofencing"
+        console.error(
+          "Permission denied: Background location access is required for geofencing"
         );
         return;
       }
 
       // Check if geofencing is already started
-      const isStarted = await Location.hasStartedGeofencingAsync(
-        GEOFENCING_TASK_NAME
-      );
+      const isStarted =
+        await Location.hasStartedGeofencingAsync(GEOFENCING_TASK_NAME);
       if (isStarted) {
         return;
       }
 
-      // Start geofencing
+      // Start geofencing with center point and radius to approximate the square area
+      const centerLat = (23.1534683 + 23.1535993) / 2;
+      const centerLon = (72.8864581 + 72.8865352) / 2;
+
+      // Calculate radius to cover the square (approximately)
+      const radius = Math.max(
+        getDistanceInMeters(23.1534683, 72.8864581, 23.1535993, 72.8865352) / 2
+      );
+
+      console.log("Starting geofence with center:", {
+        centerLat,
+        centerLon,
+        radius,
+      });
       await Location.startGeofencingAsync(GEOFENCING_TASK_NAME, [
         {
-          latitude: location!.coords.latitude,
-          longitude: location!.coords.longitude,
-          radius: 5,
+          latitude: centerLat,
+          longitude: centerLon,
+          radius: radius,
+          identifier: "square-geofence",
         },
       ]);
 
       setIsGeofencing(true);
     } catch (err) {
       console.error("Failed to start geofencing", err);
-      Alert.alert("Error", "Failed to start geofencing");
     }
   };
+
+  // Listen for geofence entered event and handle periodic alerts
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      GEOFENCE_ENTER_EVENT,
+      (data: { entered: boolean }) => {
+        console.log("Geofence event received:", data);
+        setIsInsideGeofence(data.entered);
+        if (data.entered) {
+          console.log("Setting alert visible");
+          setAlertVisible(true);
+        }
+      }
+    );
+
+    // Set up periodic alerts when inside geofence
+    let alertInterval: number | null = null;
+    if (isInsideGeofence) {
+      alertInterval = setInterval(() => {
+        setAlertVisible(true);
+      }, 60000) as unknown as number; // Show alert every 1 minute
+    }
+
+    return () => {
+      subscription.remove();
+      if (alertInterval) {
+        clearInterval(alertInterval);
+      }
+    };
+  }, [isInsideGeofence]);
 
   useEffect(() => {
     async function getCurrentLocation() {
@@ -96,23 +143,50 @@ export default function Live() {
       setLocation(location);
     }
 
+    // Get initial location
     getCurrentLocation();
+
+    // Set up interval to update location every 15 seconds
+    const locationInterval = setInterval(() => {
+      getCurrentLocation();
+    }, 15000);
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(locationInterval);
+    };
   }, []);
 
-  // Calculate points for a 100m circle around current location
-  const getCirclePoints = (lat: number, lon: number) => {
-    // 0.0009 degrees is approximately 100 meters
-    const radius = 0.0009;
-    const points = [];
-    // Generate 32 points around the circle for smooth appearance
-    for (let i = 0; i <= 32; i++) {
-      const angle = (i * 2 * Math.PI) / 32;
-      points.push({
-        latitude: lat + radius * Math.cos(angle),
-        longitude: lon + radius * Math.sin(angle),
-      });
-    }
-    return points;
+  // Get points for the square geofence
+  const getSquarePoints = () => {
+    return [
+      { latitude: 23.1534683, longitude: 72.8864581 },
+      { latitude: 23.1534745, longitude: 72.8865305 },
+      { latitude: 23.153599, longitude: 72.8865352 },
+      { latitude: 23.1535993, longitude: 72.886451 },
+      { latitude: 23.1534683, longitude: 72.8864581 }, // Close the polygon
+    ];
+  };
+
+  // Calculate distance between two points in meters
+  const getDistanceInMeters = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
   };
 
   return (
@@ -120,7 +194,7 @@ export default function Live() {
       <GoogleMaps.View
         style={styles.map}
         cameraPosition={{
-          zoom: 17,
+          zoom: 20,
           coordinates: {
             longitude: location?.coords.longitude,
             latitude: location?.coords.latitude,
@@ -136,15 +210,15 @@ export default function Live() {
         ]}
         polygons={[
           {
-            coordinates: location
-              ? getCirclePoints(
-                  location.coords.latitude,
-                  location.coords.longitude
-                )
-              : [],
-            color: "red", // Red with default opacity
+            coordinates: getSquarePoints(),
+            color: "#ff6a0089", // Red with default opacity
           },
         ]}
+      />
+      <CustomGeofenceAlert
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        locationName="Tourist Spot"
       />
     </View>
   );
