@@ -3,7 +3,8 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { ethers } from "ethers";
 import * as Clipboard from 'expo-clipboard';
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import * as SecureStore from 'expo-secure-store';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -90,6 +91,7 @@ export default function UserFormPage() {
       setWallet(newWallet);
       console.log("Private Key:", newWallet.privateKey);
       console.log("Public Address:", newWallet.address);
+      savePrivateKey(newWallet.privateKey);
       Alert.alert("Success", "Wallet generated successfully!");
     } catch (err) {
       console.error("Error generating wallet:", err);
@@ -97,25 +99,69 @@ export default function UserFormPage() {
     }
   };
 
-  const connectWallet = () => {
+
+
+async function savePrivateKey(key: string) {
+  await SecureStore.setItemAsync('user_private_key', key, {
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  });
+}
+
+async function getPrivateKey() {
+  return await SecureStore.getItemAsync('user_private_key');
+}
+
+async function deletePrivateKey() {
+  await SecureStore.deleteItemAsync('user_private_key');
+}
+
+useEffect(() => {
+    checkForSavedWallet();
+  }, []);
+
+  const checkForSavedWallet = async () => {
     try {
-      if (!privateKeyInput.trim()) {
+      const savedPrivateKey = await getPrivateKey();
+      if (savedPrivateKey) {
+        console.log("Found saved private key, connecting wallet...");
+        const walletFromKey = new ethers.Wallet(savedPrivateKey);
+        const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+        const connectedSigner = walletFromKey.connect(provider);
+        setWallet(walletFromKey);
+        setSigner(connectedSigner);
+        console.log("Connected to saved wallet:", walletFromKey.address);
+      }
+    } catch (err) {
+      console.error("Error loading saved wallet:", err);
+      // If there's an error with the saved key, delete it
+      await deletePrivateKey();
+    }
+  };
+
+  // Modify the connectWallet function to handle both manual and saved keys
+  const connectWallet = async (manualKey?: string) => {
+    try {
+      const keyToUse = manualKey || privateKeyInput.trim();
+      if (!keyToUse) {
         Alert.alert("Error", "Please enter a private key");
         return;
       }
-      
-      const walletFromKey = new ethers.Wallet(privateKeyInput);
+      const walletFromKey = new ethers.Wallet(keyToUse);
       const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
       const connectedSigner = walletFromKey.connect(provider);
       setWallet(walletFromKey);
       setSigner(connectedSigner);
-      Alert.alert("Success", "Wallet connected successfully!");
+      await savePrivateKey(walletFromKey.privateKey);
+      if (!manualKey) {
+        Alert.alert("Success", "Wallet connected successfully!");
+      }
       console.log("Connected Wallet:", walletFromKey.address);
     } catch (err) {
       console.error("Invalid private key:", err);
       Alert.alert("Error", "Invalid private key. Please check and try again.");
     }
   };
+
 
   const submitUserDetails = async () => {
     if (!signer) {
@@ -392,7 +438,7 @@ export default function UserFormPage() {
 
           <TouchableOpacity 
             style={styles.button} 
-            onPress={connectWallet}
+            onPress={()=>{connectWallet()}}
             disabled={!privateKeyInput.trim()}
           >
             <ThemedText style={styles.buttonText}>

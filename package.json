@@ -11,8 +11,11 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo/ui": "~0.1.1-alpha.10",
+    "react-native-dropdown-picker": "^5.4.6",
     "@craftzdog/react-native-buffer": "^6.1.0",
     "@expo/vector-icons": "^14.1.0",
+    "react-native-maps": "1.20.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
