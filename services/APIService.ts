@@ -1,7 +1,7 @@
 import { LocationData } from './LocationService';
 import { API_CONFIG } from '../config/api';
 
-const AI_BACKEND_URL = "http://12.10.1.127:8000";
+const AI_BACKEND_URL = "http://12.10.11.253:8000";
 
 export interface APIResponse {
   tourist_id: string;

@@ -1,11 +1,18 @@
 import * as Location from "expo-location";
 import { GoogleMaps } from "expo-maps";
 import * as TaskManager from "expo-task-manager";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, DeviceEventEmitter, StyleSheet, View } from "react-native";
+import { ethers } from "ethers";
+import CONTRACT_ABI from "@/constants/ABI.json";
+import { useAuth } from "@/contexts/AuthContext";
 
 const GEOFENCING_TASK_NAME = "GEOFENCING";
 const GEOFENCE_ENTER_EVENT = "GEOFENCE_ENTER";
+const RPC_URL = "https://sepolia.infura.io/v3/3ca08f13b2f94d4aa806fead92888aa8";
+const CONTRACT_ADDRESS = "0x5f331A051e318EE2d3cCe3771E26A77b51c5BdB5";
+
+// On-chain alert sender defined inside component to access signer and location
 
 // Define the task that will handle geofencing events
 TaskManager.defineTask(
@@ -35,12 +42,42 @@ TaskManager.defineTask(
 );
 
 export default function Live() {
+  const { signer, wallet, isAuthenticated } = useAuth();
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null
   );
   const [isGeofencing, setIsGeofencing] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [isInsideGeofence, setIsInsideGeofence] = useState(false);
+
+  const contract = useMemo(() => {
+    if (!signer) return null;
+    try {
+      return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+    } catch (e) {
+      console.warn("Failed to instantiate contract:", e);
+      return null;
+    }
+  }, [signer]);
+
+  const sendBlockchainAlert = async (message: string) => {
+    try {
+      if (!isAuthenticated || !signer || !contract) {
+        console.warn("Not authenticated or signer unavailable; skipping on-chain alert");
+        return false;
+      }
+      const address: string = wallet ? wallet.address : await signer.getAddress();
+      const lat = location?.coords.latitude ?? 0;
+      const lon = location?.coords.longitude ?? 0;
+      const tx = await contract.Alert(message, address, Math.round(lat), Math.round(lon));
+      await tx.wait();
+      console.log("Alert tx mined");
+      return true;
+    } catch (e) {
+      console.error("Failed to send blockchain alert:", e);
+      return false;
+    }
+  };
 
   // Start geofencing when location is available
   useEffect(() => {
@@ -93,9 +130,9 @@ export default function Live() {
       }
 
       // Set up geofencing with specified center point and moderate accuracy radius
-      const centerLat = 23.153443;
-      const centerLon = 72.8867434;
-      const radius = 10;
+      const centerLat = 23.1535719 ;
+      const centerLon = 72.8864717 ;
+      const radius = 1000;
 
       console.log("Starting geofence with center:", {
         centerLat,
@@ -133,13 +170,22 @@ export default function Live() {
 
         if (data.entered) {
           console.log("Showing geofence entry alert");
+          sendBlockchainAlert("User entered restricted geofence area");
           Alert.alert(
             "Restricted Area",
             "You are in the Restricted Area. Do not enter!",
             [{ text: "OK", onPress: () => console.log("Alert acknowledged") }]
           );
+          // Send on-chain alert
         } else {
           console.log("User exited geofence area");
+          // Notify and send on-chain alert
+          Alert.alert(
+            "Exit Restricted Area",
+            "You have exited the restricted area.",
+            [{ text: "OK" }]
+          );
+          sendBlockchainAlert("User exited restricted geofence area");
         }
       }
     );
@@ -158,6 +204,7 @@ export default function Live() {
       console.log("Setting up periodic alerts (every 60 seconds)");
       alertInterval = setInterval(() => {
         console.log("Showing periodic alert");
+        sendBlockchainAlert("User entered restricted geofence area");
         Alert.alert(
           "Restriceted Area",
           "You are in the Restricted Area. Do not enter!",

@@ -143,9 +143,11 @@ export default function TouristSafetyApp() {
               </Text>
             </View>
             <View style={styles.themeToggle}>
-              <TouchableOpacity style={styles.profileButton}>
+              <TouchableOpacity
+                style={styles.profileButton}
+              >
                 <Ionicons
-                  name="person-outline"
+                  name="notifications-outline"
                   size={24}
                   color={currentTheme.text}
                 />

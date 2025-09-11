@@ -5,7 +5,7 @@ import CONTRACT_ABI from '../constants/ABI.json';
 import LocationService from '../services/LocationService';
 
 const RPC_URL = "https://sepolia.infura.io/v3/3ca08f13b2f94d4aa806fead92888aa8";
-const CONTRACT_ADDRESS = "0x8aB06c2DDacF499Cc05693B866fE4f0042BFe867";
+const CONTRACT_ADDRESS = "0x5f331A051e318EE2d3cCe3771E26A77b51c5BdB5";
 
 interface User {
   name: string;
