@@ -2,6 +2,7 @@ import { ethers, JsonRpcProvider } from 'ethers';
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import CONTRACT_ABI from '../constants/ABI.json';
+import LocationService from '../services/LocationService';
 
 const RPC_URL = "https://sepolia.infura.io/v3/3ca08f13b2f94d4aa806fead92888aa8";
 const CONTRACT_ADDRESS = "0x8aB06c2DDacF499Cc05693B866fE4f0042BFe867";
@@ -23,11 +24,14 @@ interface AuthContextType {
   wallet: ethers.Wallet | null;
   signer: ethers.Signer | null;
   user: User | null;
+  isLocationTracking: boolean;
   generateWallet: () => Promise<void>;
   connectWallet: (privateKey: string) => Promise<void>;
   saveUserDetails: (userData: User) => Promise<void>;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
+  startLocationTracking: () => Promise<boolean>;
+  stopLocationTracking: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [wallet, setWallet] = useState<ethers.Wallet | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isLocationTracking, setIsLocationTracking] = useState(false);
 
   const savePrivateKey = async (privateKey: string): Promise<void> => {
     try {
@@ -211,6 +216,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     try {
+      // Stop location tracking before logout
+      await stopLocationTracking();
+      
       await deletePrivateKey();
       await SecureStore.deleteItemAsync("user_data");
       setWallet(null);
@@ -219,6 +227,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Error during logout:', error);
+    }
+  };
+
+  const startLocationTracking = async (): Promise<boolean> => {
+    try {
+      if (!isAuthenticated) {
+        console.error('User must be authenticated to start location tracking');
+        return false;
+      }
+
+      const locationService = LocationService.getInstance();
+      const success = await locationService.startBackgroundTracking();
+      setIsLocationTracking(success);
+      return success;
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+      return false;
+    }
+  };
+
+  const stopLocationTracking = async (): Promise<boolean> => {
+    try {
+      const locationService = LocationService.getInstance();
+      const success = await locationService.stopBackgroundTracking();
+      setIsLocationTracking(false);
+      return success;
+    } catch (error) {
+      console.error('Error stopping location tracking:', error);
+      return false;
     }
   };
 
@@ -307,11 +344,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     wallet,
     signer,
     user,
+    isLocationTracking,
     generateWallet,
     connectWallet,
     saveUserDetails,
     logout,
     checkAuthStatus,
+    startLocationTracking,
+    stopLocationTracking,
   };
 
   return (

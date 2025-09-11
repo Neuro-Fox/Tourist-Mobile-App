@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import LocationTracker from "@/components/LocationTracker";
 
 export default function TouristSafetyApp() {
   const [location, setLocation] = useState<Location.LocationObject | null>(
@@ -244,35 +245,19 @@ export default function TouristSafetyApp() {
 
         {/* Location Tracking Section */}
         <View style={styles.trackingSection}>
-          <View style={styles.trackingHeader}>
-            <Text style={[styles.trackingTitle, { color: currentTheme.text }]}>
-              Location Tracking
-            </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: isDarkMode ? "#404040" : "#E9ECEF" },
-              ]}
-            >
-              <Text
-                style={[styles.statusText, { color: currentTheme.subText }]}
-              >
-                Inactive
-              </Text>
-            </View>
-          </View>
-
+          <LocationTracker />
+          
           <TouchableOpacity
             style={styles.startTrackingButton}
             onPress={() => router.push("/live")}
           >
             <Ionicons name="play" size={16} color="#FFFFFF" />
-            <Text style={styles.startTrackingText}>Start Tracking</Text>
+            <Text style={styles.startTrackingText}>View Live Tracking</Text>
           </TouchableOpacity>
         </View>
 
         {/* Emergency Button */}
-        <TouchableOpacity style={styles.emergencyButton} activeOpacity={0.7}>
+        {/* <TouchableOpacity style={styles.emergencyButton} activeOpacity={0.7}>
           <View style={styles.emergencyIcon}>
             <Ionicons name="warning" size={32} color="#FFFFFF" />
             <Text
@@ -286,7 +271,7 @@ export default function TouristSafetyApp() {
               SOS
             </Text>
           </View>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </ScrollView>
     </View>
   );
