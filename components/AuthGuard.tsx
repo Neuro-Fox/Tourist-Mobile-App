@@ -56,6 +56,8 @@ const RegistrationFlow: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPrivateKey, setShowPrivateKey] = React.useState(false);
   const [step, setStep] = React.useState<'wallet' | 'details'>('wallet');
+  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [isAadharVerified, setIsAadharVerified] = React.useState(false);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -104,6 +106,44 @@ const RegistrationFlow: React.FC = () => {
       // You might want to show a toast or alert here
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  const verifyAadhar = async () => {
+    if (!userData.aadhar.trim()) {
+      return;
+    }
+
+    if (userData.aadhar.length !== 12) {
+      return;
+    }
+
+    try {
+      setIsVerifying(true);
+      
+      const response = await fetch('https://api.apyhub.com/validate/aadhaar', {
+        method: 'POST',
+        headers: {
+          'apy-token': 'APY0LMvKWEAM7qApkvvCBU18R1sSDCKNkEWlCul4IQCdXPr1dD9Mla3o0MgXUhZSag4Un', 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          aadhaar: userData.aadhar
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.data === true) {
+        setIsAadharVerified(true);
+      } else {
+        setIsAadharVerified(false);
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      setIsAadharVerified(false);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -187,6 +227,42 @@ const RegistrationFlow: React.FC = () => {
     stepText: {
       color: '#ffffff',
       fontWeight: '600' as const,
+    },
+    formRow: {
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      gap: 10,
+    },
+    halfWidth: {
+      flex: 1,
+    },
+    verifyContainer: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      marginTop: -10,
+      marginBottom: 15,
+    },
+    verifyButton: {
+      backgroundColor: colors.tint,
+      paddingHorizontal: 15,
+      paddingVertical: 8,
+      borderRadius: 6,
+      marginRight: 10,
+    },
+    verifyButtonText: {
+      color: '#ffffff',
+      fontSize: 14,
+      fontWeight: '600' as const,
+    },
+    verifiedContainer: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+    },
+    verifiedText: {
+      color: '#28a745',
+      fontSize: 14,
+      fontWeight: '600' as const,
+      marginLeft: 5,
     },
   };
 
@@ -308,6 +384,47 @@ const RegistrationFlow: React.FC = () => {
             multiline={true}
           />
 
+          <View style={styles.formRow}>
+            <View style={styles.halfWidth}>
+              <TextInput
+                style={styles.input}
+                placeholder="Aadhaar Number (12 digits)"
+                placeholderTextColor={colors.icon}
+                value={userData.aadhar}
+                onChangeText={(text) => {
+                  setUserData({ ...userData, aadhar: text });
+                  setIsAadharVerified(false); // Reset verification when text changes
+                }}
+                keyboardType="numeric"
+                maxLength={12}
+              />
+              
+              {/* Aadhaar Verification UI */}
+              <View style={styles.verifyContainer}>
+                {!isAadharVerified && userData.aadhar.length === 12 && (
+                  <TouchableOpacity 
+                    style={styles.verifyButton}
+                    onPress={verifyAadhar}
+                    disabled={isVerifying}
+                  >
+                    {isVerifying ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <ThemedText style={styles.verifyButtonText}>Verify</ThemedText>
+                    )}
+                  </TouchableOpacity>
+                )}
+                
+                {isAadharVerified && (
+                  <View style={styles.verifiedContainer}>
+                    <ThemedText style={{ fontSize: 20 }}>✅</ThemedText>
+                    <ThemedText style={styles.verifiedText}>Verified</ThemedText>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
           <TextInput
             style={styles.input}
             placeholder="Number of Days"
@@ -317,10 +434,28 @@ const RegistrationFlow: React.FC = () => {
             keyboardType="numeric"
           />
 
+          {/* Verify Documents Button */}
+          {userData.aadhar.trim().length > 0 && !isAadharVerified && (
+            <TouchableOpacity
+              style={[styles.button, styles.buttonSecondary, isVerifying && { opacity: 0.6 }]}
+              onPress={verifyAadhar}
+              disabled={isVerifying}
+            >
+              <ThemedText style={styles.buttonTextSecondary}>
+                {isVerifying ? 'Verifying...' : 'Verify Documents'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+
+          {/* Complete Registration Button */}
           <TouchableOpacity
-            style={[styles.button, isLoading && { opacity: 0.6 }]}
+            style={[
+              styles.button, 
+              isLoading && { opacity: 0.6 },
+              (userData.aadhar.trim().length > 0 && !isAadharVerified) && { opacity: 0.6 }
+            ]}
             onPress={handleSubmitDetails}
-            disabled={isLoading}
+            disabled={isLoading || (userData.aadhar.trim().length > 0 && !isAadharVerified)}
           >
             <ThemedText style={styles.buttonText}>
               {isLoading ? 'Completing Registration...' : 'Complete Registration'}

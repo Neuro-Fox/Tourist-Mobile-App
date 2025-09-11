@@ -281,20 +281,6 @@ export default function ProfilePage() {
             </View>
           )}
 
-          {user.aadhar && (
-            <View style={styles.userInfo}>
-              <ThemedText style={styles.userLabel}>Aadhar:</ThemedText>
-              <ThemedText style={styles.userValue}>{user.aadhar}</ThemedText>
-            </View>
-          )}
-
-          {user.passport && (
-            <View style={styles.userInfo}>
-              <ThemedText style={styles.userLabel}>Passport:</ThemedText>
-              <ThemedText style={styles.userValue}>{user.passport}</ThemedText>
-            </View>
-          )}
-
           <View style={styles.userInfo}>
             <ThemedText style={styles.userLabel}>Travel Days:</ThemedText>
             <ThemedText style={styles.userValue}>{user.days} days</ThemedText>
