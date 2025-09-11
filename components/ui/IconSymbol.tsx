@@ -24,6 +24,7 @@ const MAPPING = {
   "bolt.fill": "location-pin",
   calendar: "calendar-today",
   "person.crop.circle": "account-circle",
+  pencil: "edit",
 } as IconMapping;
 
 /**
