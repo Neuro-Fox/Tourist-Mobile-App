@@ -126,6 +126,12 @@
 			},
 			{
 				"indexed": false,
+				"internalType": "string",
+				"name": "alertType",
+				"type": "string"
+			},
+			{
+				"indexed": false,
 				"internalType": "int256",
 				"name": "latitude",
 				"type": "int256"
@@ -383,6 +389,11 @@
 			{
 				"internalType": "string",
 				"name": "_alertMessage",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_alertType",
 				"type": "string"
 			},
 			{
