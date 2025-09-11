@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const GEOFENCING_TASK_NAME = "GEOFENCING";
 const GEOFENCE_ENTER_EVENT = "GEOFENCE_ENTER";
 const RPC_URL = "https://sepolia.infura.io/v3/3ca08f13b2f94d4aa806fead92888aa8";
-const CONTRACT_ADDRESS = "0x5f331A051e318EE2d3cCe3771E26A77b51c5BdB5";
+const CONTRACT_ADDRESS = "0xA18fc87e627D90C470cb6C155f5da0964A1370F6";
 
 // On-chain alert sender defined inside component to access signer and location
 
@@ -171,20 +171,20 @@ export default function Live() {
         if (data.entered) {
           console.log("Showing geofence entry alert");
           sendBlockchainAlert("User entered restricted geofence area");
-          Alert.alert(
-            "Restricted Area",
-            "You are in the Restricted Area. Do not enter!",
-            [{ text: "OK", onPress: () => console.log("Alert acknowledged") }]
-          );
+          DeviceEventEmitter.emit("APP_GEOFENCE_ALERT", {
+            title: "Restricted Area",
+            message: "You are in the Restricted Area. Do not enter!",
+            type: "geofence",
+          });
           // Send on-chain alert
         } else {
           console.log("User exited geofence area");
           // Notify and send on-chain alert
-          Alert.alert(
-            "Exit Restricted Area",
-            "You have exited the restricted area.",
-            [{ text: "OK" }]
-          );
+          DeviceEventEmitter.emit("APP_GEOFENCE_ALERT", {
+            title: "Exit Restricted Area",
+            message: "You have exited the restricted area.",
+            type: "geofence",
+          });
           sendBlockchainAlert("User exited restricted geofence area");
         }
       }
@@ -205,16 +205,11 @@ export default function Live() {
       alertInterval = setInterval(() => {
         console.log("Showing periodic alert");
         sendBlockchainAlert("User entered restricted geofence area");
-        Alert.alert(
-          "Restriceted Area",
-          "You are in the Restricted Area. Do not enter!",
-          [
-            {
-              text: "OK",
-              onPress: () => console.log("Periodic alert acknowledged"),
-            },
-          ]
-        );
+        DeviceEventEmitter.emit("APP_GEOFENCE_ALERT", {
+          title: "Restricted Area",
+          message: "You are in the Restricted Area. Do not enter!",
+          type: "geofence",
+        });
       }, 60000); // Show alert every 1 minute
     } else {
       console.log("User not in geofence, no periodic alerts needed");

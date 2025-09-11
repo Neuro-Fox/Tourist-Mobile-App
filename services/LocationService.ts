@@ -9,7 +9,7 @@ const LOCATION_TASK_NAME = 'background-location-task';
 export interface LocationData {
   lat: number;
   lon: number;
-  ts: string;
+  timestamp: string;
   tourist_id: string;
 }
 
@@ -31,7 +31,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
       const locationData: LocationData = {
         lat: location.coords.latitude,
         lon: location.coords.longitude,
-        ts: new Date(location.timestamp).toISOString(),
+        timestamp: new Date(location.timestamp).toISOString(),
         tourist_id: touristId,
       };
       

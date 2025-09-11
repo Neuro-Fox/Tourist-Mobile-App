@@ -57,7 +57,7 @@ const RegistrationFlow: React.FC = () => {
   const [showPrivateKey, setShowPrivateKey] = React.useState(false);
   const [step, setStep] = React.useState<'wallet' | 'details'>('wallet');
   const [isVerifying, setIsVerifying] = React.useState(false);
-  const [isAadharVerified, setIsAadharVerified] = React.useState(false);
+  const [isAadharVerified, setIsAadharVerified] = React.useState(true);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
