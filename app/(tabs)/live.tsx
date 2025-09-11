@@ -2,8 +2,7 @@ import * as Location from "expo-location";
 import { GoogleMaps } from "expo-maps";
 import * as TaskManager from "expo-task-manager";
 import { useEffect, useState } from "react";
-import { DeviceEventEmitter, StyleSheet, View } from "react-native";
-import CustomGeofenceAlert from "../../components/CustomGeofenceAlert";
+import { Alert, DeviceEventEmitter, StyleSheet, View } from "react-native";
 
 const GEOFENCING_TASK_NAME = "GEOFENCING";
 const GEOFENCE_ENTER_EVENT = "GEOFENCE_ENTER";
@@ -19,9 +18,12 @@ TaskManager.defineTask(
     region: { identifier: string };
   }>) => {
     if (error) {
-      console.error(error);
+      console.error("Geofencing task error:", error);
       return;
     }
+
+    console.log("Geofencing task triggered:", data);
+
     if (data.eventType === Location.GeofencingEventType.Enter) {
       console.log("Geofence Enter Event Triggered");
       DeviceEventEmitter.emit(GEOFENCE_ENTER_EVENT, { entered: true });
@@ -42,51 +44,65 @@ export default function Live() {
 
   // Start geofencing when location is available
   useEffect(() => {
-    if (location) {
+    console.log("Location changed:", location?.coords);
+    if (location && !isGeofencing) {
+      console.log("Starting geofencing setup...");
       startGeofencing();
     }
-  }, [location]);
+  }, [location, isGeofencing]); // Added isGeofencing to prevent multiple calls
 
   // Setup geofencing
   const startGeofencing = async () => {
     try {
+      console.log("Requesting foreground permissions...");
       const { status: foregroundStatus } =
         await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== "granted") {
         console.error("Permission denied: Please enable location permissions");
+        Alert.alert(
+          "Permission Required",
+          "Please enable location permissions"
+        );
         return;
       }
+      console.log("Foreground permission granted");
 
+      console.log("Requesting background permissions...");
       const { status: backgroundStatus } =
         await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== "granted") {
         console.error(
           "Permission denied: Background location access is required for geofencing"
         );
+        Alert.alert(
+          "Background Permission Required",
+          "Background location access is required for geofencing"
+        );
         return;
       }
+      console.log("Background permission granted");
 
       // Check if geofencing is already started
       const isStarted =
         await Location.hasStartedGeofencingAsync(GEOFENCING_TASK_NAME);
+      console.log("Is geofencing already started:", isStarted);
+
       if (isStarted) {
-        return;
+        console.log("Geofencing already active, stopping first...");
+        await Location.stopGeofencingAsync(GEOFENCING_TASK_NAME);
       }
 
-      // Start geofencing with center point and radius to approximate the square area
-      const centerLat = (23.1534683 + 23.1535993) / 2;
-      const centerLon = (72.8864581 + 72.8865352) / 2;
-
-      // Calculate radius to cover the square (approximately)
-      const radius = Math.max(
-        getDistanceInMeters(23.1534683, 72.8864581, 23.1535993, 72.8865352) / 2
-      );
+      // Set up geofencing with specified center point and moderate accuracy radius
+      const centerLat = 23.153443;
+      const centerLon = 72.8867434;
+      const radius = 10;
 
       console.log("Starting geofence with center:", {
         centerLat,
         centerLon,
         radius,
       });
+
       await Location.startGeofencingAsync(GEOFENCING_TASK_NAME, [
         {
           latitude: centerLat,
@@ -96,76 +112,152 @@ export default function Live() {
         },
       ]);
 
+      console.log("Geofencing started successfully!");
       setIsGeofencing(true);
     } catch (err) {
-      console.error("Failed to start geofencing", err);
+      console.error("Failed to start geofencing:", err);
+      Alert.alert("Geofencing Error", `Failed to start geofencing: ${err}`);
     }
   };
 
-  // Listen for geofence entered event and handle periodic alerts
+  // Listen for geofence events - Fixed dependency array
   useEffect(() => {
+    console.log("Setting up geofence event listener...");
+
     const subscription = DeviceEventEmitter.addListener(
       GEOFENCE_ENTER_EVENT,
       (data: { entered: boolean }) => {
         console.log("Geofence event received:", data);
         setIsInsideGeofence(data.entered);
+        console.log("Is user inside geofence area:", data.entered);
+
         if (data.entered) {
-          console.log("Setting alert visible");
-          setAlertVisible(true);
+          console.log("Showing geofence entry alert");
+          Alert.alert(
+            "Restricted Area",
+            "You are in the Restricted Area. Do not enter!",
+            [{ text: "OK", onPress: () => console.log("Alert acknowledged") }]
+          );
+        } else {
+          console.log("User exited geofence area");
         }
       }
     );
 
-    // Set up periodic alerts when inside geofence
-    let alertInterval: number | null = null;
+    return () => {
+      console.log("Removing geofence event listener");
+      subscription.remove();
+    };
+  }, []); // Fixed: No dependencies needed here
+
+  // Separate effect for periodic alerts - Fixed stale closure issue
+  useEffect(() => {
+    let alertInterval: ReturnType<typeof setInterval> | null = null;
+
     if (isInsideGeofence) {
+      console.log("Setting up periodic alerts (every 60 seconds)");
       alertInterval = setInterval(() => {
-        setAlertVisible(true);
-      }, 60000) as unknown as number; // Show alert every 1 minute
+        console.log("Showing periodic alert");
+        Alert.alert(
+          "Restriceted Area",
+          "You are in the Restricted Area. Do not enter!",
+          [
+            {
+              text: "OK",
+              onPress: () => console.log("Periodic alert acknowledged"),
+            },
+          ]
+        );
+      }, 60000); // Show alert every 1 minute
+    } else {
+      console.log("User not in geofence, no periodic alerts needed");
     }
 
     return () => {
-      subscription.remove();
       if (alertInterval) {
+        console.log("Clearing periodic alert interval");
         clearInterval(alertInterval);
       }
     };
-  }, [isInsideGeofence]);
+  }, [isInsideGeofence]); // Fixed: Proper dependency
 
+  // Location tracking effect - Added better logging
   useEffect(() => {
     async function getCurrentLocation() {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        return;
-      }
+      try {
+        console.log("Requesting location permissions...");
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.error("Location permission denied");
+          Alert.alert("Permission Required", "Location permission is required");
+          return;
+        }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
+        console.log("Getting current location...");
+        let currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        console.log("Location obtained:", {
+          lat: currentLocation.coords.latitude,
+          lon: currentLocation.coords.longitude,
+          accuracy: currentLocation.coords.accuracy,
+        });
+
+        setLocation(currentLocation);
+
+        // Calculate distance to geofence center for debugging
+        const distance = getDistanceInMeters(
+          currentLocation.coords.latitude,
+          currentLocation.coords.longitude,
+          23.153443,
+          72.8867434
+        );
+        console.log(
+          `Distance to geofence center: ${distance.toFixed(2)} meters`
+        );
+      } catch (error) {
+        console.error("Error getting location:", error);
+      }
     }
 
     // Get initial location
+    console.log("Getting initial location...");
     getCurrentLocation();
 
     // Set up interval to update location every 15 seconds
+    console.log("Setting up location update interval (15 seconds)");
     const locationInterval = setInterval(() => {
+      console.log("Updating location...");
       getCurrentLocation();
     }, 15000);
 
     // Cleanup interval on component unmount
     return () => {
+      console.log("Clearing location update interval");
       clearInterval(locationInterval);
     };
   }, []);
 
-  // Get points for the square geofence
-  const getSquarePoints = () => {
-    return [
-      { latitude: 23.1534683, longitude: 72.8864581 },
-      { latitude: 23.1534745, longitude: 72.8865305 },
-      { latitude: 23.153599, longitude: 72.8865352 },
-      { latitude: 23.1535993, longitude: 72.886451 },
-      { latitude: 23.1534683, longitude: 72.8864581 }, // Close the polygon
-    ];
+  // Get points for circular geofence visualization
+  const getCirclePoints = () => {
+    const centerLat = 23.153443;
+    const centerLon = 72.8867434;
+    const radius = 10; // 10 meters radius
+
+    // Create a circle approximation using 32 points
+    const points = [];
+    const numPoints = 32;
+    for (let i = 0; i <= numPoints; i++) {
+      const angle = (i / numPoints) * 2 * Math.PI;
+      const lat = centerLat + (radius / 111320) * Math.cos(angle); // 111320 meters per degree of latitude
+      const lon =
+        centerLon +
+        (radius / (111320 * Math.cos((centerLat * Math.PI) / 180))) *
+          Math.sin(angle);
+      points.push({ latitude: lat, longitude: lon });
+    }
+    return points;
   };
 
   // Calculate distance between two points in meters
@@ -189,6 +281,13 @@ export default function Live() {
     return R * c;
   };
 
+  // Add debugging info to see current state
+  console.log("Current state:", {
+    hasLocation: !!location,
+    isGeofencing,
+    isInsideGeofence,
+  });
+
   return (
     <View style={styles.container}>
       <GoogleMaps.View
@@ -196,29 +295,24 @@ export default function Live() {
         cameraPosition={{
           zoom: 20,
           coordinates: {
-            longitude: location?.coords.longitude,
-            latitude: location?.coords.latitude,
+            longitude: location?.coords.longitude || 72.8867434,
+            latitude: location?.coords.latitude || 23.153443,
           },
         }}
         markers={[
           {
             coordinates: {
-              longitude: location?.coords.longitude,
-              latitude: location?.coords.latitude,
+              longitude: location?.coords.longitude || 72.8867434,
+              latitude: location?.coords.latitude || 23.153443,
             },
           },
         ]}
         polygons={[
           {
-            coordinates: getSquarePoints(),
-            color: "#ff6a0089", // Red with default opacity
+            coordinates: getCirclePoints(),
+            color: "#ff6a0089", // Red with opacity for visibility
           },
         ]}
-      />
-      <CustomGeofenceAlert
-        visible={alertVisible}
-        onClose={() => setAlertVisible(false)}
-        locationName="Tourist Spot"
       />
     </View>
   );
