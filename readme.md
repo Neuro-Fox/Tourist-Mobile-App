@@ -1,50 +1,83 @@
-# Welcome to your Expo app 👋
+# Tourist Mobile App  
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+[![React Native](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)  
+[![Expo](https://img.shields.io/badge/Expo-1C1E24?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)  
+[![Ethereum](https://img.shields.io/badge/Ethereum-3C3C3D?style=for-the-badge&logo=ethereum&logoColor=white)](https://ethereum.org/)  
 
-## Get started
+---
 
-1. Install dependencies
+## 📌 Problem Statement  
 
+Tourism in regions like the Northeast is growing rapidly, but safety monitoring and incident response remain major challenges. Traditional systems are slow, manual, and lack transparency.  
+
+This app is part of the **Smart Tourist Safety Monitoring & Incident Response System** which combines **AI, Blockchain, and Geo-fencing** to provide secure tourist tracking, safety alerts, and real-time response.  
+
+---
+
+## 📱 Tourist Mobile App  
+
+The Tourist Mobile App is the **frontend for tourists**. It provides them with a **digital identity**, **safety score**, **live tracking options**, and **emergency features**.  
+
+### ✨ Features and How They Work  
+
+- **Digital Tourist ID Integration**  
+  - When a tourist registers, the app connects with a **smart contract on Ethereum** using MetaMask.  
+  - A blockchain-based digital ID is issued, storing KYC, trip details, and emergency contacts securely.  
+
+- **Tourist Safety Score**  
+  - The app calculates a safety score using travel history and locations visited.  
+  - If the tourist enters a sensitive or high-risk area, the score lowers and the app shows a warning.  
+
+- **Geo-fencing Alerts**  
+  - The app uses GPS to check the tourist’s live location.  
+  - If they cross into a **restricted or unsafe zone**, an alert is triggered for both the tourist and authorities.  
+
+- **Panic Button (SOS)**  
+  - A button in the app instantly shares the live location with **emergency contacts and the nearest police unit**.  
+  - The SOS incident is also **recorded on the blockchain** for proof and quick response.  
+
+- **Live Tracking (Opt-in)**  
+  - Tourists can allow family or police to track their movements in real time.  
+  - Useful in remote or risky areas.  
+
+- **Anomaly Detection**  
+  - The system flags unusual activity such as sudden location drop, long inactivity, or deviation from planned routes.  
+  - These anomalies are sent to the dashboard for early intervention.  
+
+- **Multilingual Support**  
+  - The app supports **10+ Indian languages** plus English.  
+  - Tourists can also use **voice or text emergency options** for accessibility.  
+
+---
+
+## 🖥️ Connection to Dashboard  
+
+- The app sends important data to the **Police & Tourism Dashboard**:  
+  - Tourist digital ID (from blockchain)  
+  - Live location updates  
+  - SOS alerts  
+  - Anomaly warnings  
+
+- The dashboard then shows:  
+  - Tourist clusters and heatmaps  
+  - Alerts for high-risk areas  
+  - Auto e-FIR in missing cases  
+
+---
+
+## 🔗 Blockchain Integration  
+
+- The app connects to **Ethereum blockchain** via MetaMask.  
+- IDs are stored and verified on-chain to prevent tampering.  
+- Smart Contracts are deployed using **Remix IDE**.  
+
+---
+
+## 🚀 How to Run the App Properly  
+
+1. **Clone the repository**  
    ```bash
+   git clone https://github.com/Neuro-Fox/Tourist-Mobile-App.git
+   cd Tourist-Mobile-App
    npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   npm expo start
